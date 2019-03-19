@@ -1,0 +1,99 @@
+# apiVersion: apps/v1beta1
+# kind: Deployment
+# metadata:
+#   name: calculatorsvc-v1
+# spec:
+#   replicas: 1
+#   template:
+#     metadata:
+#       labels:
+#         app: calculatorsvc
+#         tier: backend
+#         version: v1
+#     spec:
+#       containers:
+#       - name: calculatorsvc
+#         image: srajaramacr.azurecr.io/calculatorsvc:1.0.0
+#         imagePullPolicy: Always
+#         resources:
+#           limits:
+#             memory: "128Mi"
+#             cpu: "500m"
+#         ports:
+#         - containerPort: 80
+# ****************** Scenario --> demo for healthchecks. ******************
+        
+        # Version v1 or calculatorsvc:1.0.0 does not have the end points for /health/live and /health/ready in code.
+        # So it is a perfect example for healthchecks 
+        # livenessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /health/live
+        #     port: 80
+        #     scheme: HTTP
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        # readinessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /health/ready
+        #     port: 80
+        #     scheme: HTTP
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+# ---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: calculatorsvc-v2
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: calculatorsvc
+        tier: backend
+        version: v2
+    spec:
+      containers:
+      - name: calculatorsvc
+        image: srajaramacr.azurecr.io/calculatorsvc:2.0.0
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+        # livenessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /health/live
+        #     port: 80
+        #     scheme: HTTP
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        # readinessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /health/ready
+        #     port: 80
+        #     scheme: HTTP
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calculatorsvc
+spec:
+  type: LoadBalancer #uncomment this to directly expose with regular Kubernetes without Istio
+  selector:
+    app: calculatorsvc
+  ports:
+  - port: 80
+    name: http-calculatorsvc  # Should start with http- for Istio, Jager and Prometheus to trace requests

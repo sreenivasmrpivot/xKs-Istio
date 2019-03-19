@@ -1,0 +1,62 @@
+# Version 1 of a service deployed along side Version 2 if calcmvc-v and calcmvc-v2 are commented out. 
+# calcmvc-v1 has white background
+# calcmvc-v2 has teal background
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: calcmvc-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: calcmvc
+        tier: frontend
+        version: v1
+    spec:
+      containers:
+      - name: calcmvc
+        image: srajaramacr.azurecr.io/calcmvc:1.0.0
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: calcmvc-v2
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: calcmvc
+        tier: frontend
+        version: v2
+    spec:
+      containers:
+      - name: calcmvc
+        image: srajaramacr.azurecr.io/calcmvc:2.0.0
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calcmvc
+spec:
+  #type: LoadBalancer #uncomment this to directly expose with regular Kubernetes without Istio
+  selector:
+    app: calcmvc
+  ports:
+  - port: 80
+    name: http-calcmvc  # Should start with http- for Istio, Jager and Prometheus to trace requests
