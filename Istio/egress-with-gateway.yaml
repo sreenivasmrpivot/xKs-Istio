@@ -1,0 +1,53 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-egressgateway
+spec:
+  selector:
+    istio: egressgateway
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key
+    hosts:
+    - scientificcalculator.azurewebsites.net
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: scientificcalculator
+spec:
+  hosts:
+  - scientificcalculator.azurewebsites.net
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: scientificcalculator
+spec:
+  hosts:
+  - scientificcalculator.azurewebsites.net
+  gateways:
+  - demo-egressgateway
+  tls:
+  - match:
+    - port: 443
+      sni_hosts:
+      - scientificcalculator.azurewebsites.net
+    route:
+    - destination:
+        host: scientificcalculator.azurewebsites.net
+        port:
+          number: 443
+      weight: 100

@@ -1,0 +1,99 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    # - testswagger.smanyamr.com
+    # - consumeme.smanyamr.com
+    - calculatorsvc.smanyamr.com
+    - calcmvc.smanyamr.com
+---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: testswagger
+# spec:
+#   hosts:
+#   - testswagger.smanyamr.com
+#   gateways:
+#   - demo-gateway
+#   http:
+#   - match:
+#     - uri:
+#         prefix: /swagger
+#     - uri:
+#         prefix: /api
+#     route:
+#     - destination:
+#         host: testswagger
+#         port:
+#           number: 80
+# ---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: consumeme
+# spec:
+#   hosts:
+#   - consumeme.smanyamr.com
+#   gateways:
+#   - demo-gateway
+#   http:
+#   - match:
+#     - uri:
+#         prefix: /swagger
+#     - uri:
+#         prefix: /api
+#     route:
+#     - destination:
+#         host: consumeme
+#         port:
+#           number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: calcmvc
+spec:
+  hosts:
+  - calcmvc.smanyamr.com
+  gateways:
+  - demo-https-gateway
+  http:
+  - route:
+    - destination:
+        host: calcmvc
+        port:
+          number: 80
+        subset: v1 
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: calculatorsvc
+spec:
+  hosts:
+  - calculatorsvc.smanyamr.com
+  gateways:
+  - demo-https-gateway
+  http:
+  - match:
+    - headers:
+        country:
+          exact: india
+    route:
+    - destination:
+        host: calculatorsvc
+        subset: v2
+  - route:
+    - destination:
+        host: calculatorsvc
+        subset: v1

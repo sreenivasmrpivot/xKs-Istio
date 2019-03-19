@@ -1,0 +1,242 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-https-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key
+    hosts:
+    - calculatorsvc.smanyamr.com
+    - calcmvc.smanyamr.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: calcmvc
+spec:
+  hosts:
+  - calcmvc.smanyamr.com
+  gateways:
+  - demo-https-gateway
+  http:
+  # ****************** Scenario --> Default Round Robin ******************
+
+  # - route:
+  #   - destination:
+  #       host: calcmvc
+  #       port:
+  #         number: 80
+
+  # **********************************************************************
+
+  # ****************** Scenario --> All Requests to a Single Version ******************
+
+  # - route:
+  #   - destination:
+  #       host: calcmvc
+  #       port:
+  #         number: 80
+  #       # For subsets in ingress to work, they must be defined in DestinationRule. Else they would never work.
+  #       # If the below subset element is commented out, the request is sent to all versions of calcmvc in round robin
+  #       # If subset is set to v1, request is always routed to version v1, which has white background
+  #       # If subset is set to v2, request is always routed to version v2, which has teal background
+  #       subset: v2 
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Header Based ******************
+
+  # The entire match section below ensures that the requests to a specific country=india in header are served with subset v2. 
+  # This can be replaced with any header item match.
+  - match:
+    - headers:
+        country:
+          exact: india
+    route:
+    - destination:
+        host: calcmvc
+        subset: v2
+  - route:
+    - destination:
+        host: calcmvc
+        port:
+          number: 80
+        # For subsets in ingress to work, they must be defined in DestinationRule. Else they would never work.
+        # If the below subset element is commented out, the request is sent to all versions of calcmvc in round robin
+        # If subset is set to v1, request is always routed to version v1, which has white background
+        # If subset is set to v2, request is always routed to version v2, which has teal background
+        subset: v1 
+
+  #   # Note: You want to place the header specific routing ahead of general routing for it to work. Else all requests would be routed to general routing.
+  #   # This is important as the order of precedence is honored.
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Traffic Shifting ******************
+
+  # - route:
+  #   - destination:
+  #       host: calcmvc
+  #       subset: v1
+  #     weight: 75
+  #   - destination:
+  #       host: calcmvc
+  #       subset: v2
+  #     weight: 25
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Override Default Timeout of 15 secs ******************
+
+  # - route:
+  #   - destination:
+  #       host: calcmvc
+  #       subset: v2
+  #   timeout: 0.01s
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Retries with Per Request Timeout ******************
+
+  # - route:
+  #   - destination:
+  #       host: calcmvc
+  #       subset: v1
+  #   retries:
+  #     attempts: 3
+  #     perTryTimeout: 0.01s
+
+  # **********************************************************************
+
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: calculatorsvc
+spec:
+  hosts:
+  - calculatorsvc.smanyamr.com
+  gateways:
+  - demo-https-gateway
+  http:
+  # ****************** Scenario --> Just to showcase exact prefix match condition ******************
+
+  # - match:
+  #   - uri:
+  #       prefix: /swagger
+  #   - uri:
+  #       prefix: /api
+  #   route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       port:
+  #         number: 80
+
+  # **********************************************************************
+
+  - match:
+    - headers:
+        country:
+          exact: india
+    route:
+    - destination:
+        host: calculatorsvc
+        subset: v2
+  - route:
+    - destination:
+        host: calculatorsvc
+        subset: v1
+
+
+  # ****************** Scenario --> Inject Timeout Fault with match condition of country=india ****************** 
+
+  # Timeout fault or Delay fault kicks in after a certain timeout
+  # Pending work: Make code changes to the calcmvc to display timeout errors in a label or textbox
+
+  # - fault:
+  #     delay:
+  #       fixedDelay: 7s
+  #       percent: 100
+  #   match:
+  #   - headers:
+  #       country:
+  #         exact: india
+  #   route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v2
+  # - route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v1
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Inject Abort Fault with match condition of country=india ****************** 
+
+  # Abort fault kicks in instantly
+  # Pending work: Make code changes to the calcmvc to display timeout errors in a label or textbox
+
+  # - fault:
+  #     abort:
+  #       httpStatus: 500
+  #       percent: 100
+  #   match:
+  #   - headers:
+  #       country:
+  #         exact: india
+  #   route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v2
+  # - route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v1
+
+  # **********************************************************************
+
+  # ****************** Scenario --> Route based on source of request ****************** 
+
+  # All requests from the calcmvc are served with v1 of calculatorsvc
+  # Any request not from or outside of calcmvc are served with v2 of calculatorsvc
+
+  # - match:
+  #   - sourceLabels:
+  #       app: calcmvc
+  #   route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v1
+  # - route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v2
+
+  # **********************************************************************
+
+
+  # ****************** Scenario --> Mirroring ****************** 
+
+  # - route:
+  #   - destination:
+  #       host: calculatorsvc
+  #       subset: v1
+  #     weight: 100
+  #   mirror:
+  #     host: calculatorsvc
+  #     subset: v2
+
+  # **********************************************************************
+
+

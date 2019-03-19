@@ -1,0 +1,53 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-https-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key
+    hosts:
+    - testswagger.smanyamr.com
+    - consumeme.smanyamr.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: testswagger
+spec:
+  hosts:
+  - testswagger.smanyamr.com
+  gateways:
+  - demo-https-gateway
+  http:
+  - route:
+    - destination:
+        host: testswagger
+        subset: v1
+        port:
+          number: 80
+# ---
+# apiVersion: networking.istio.io/v1alpha3
+# kind: VirtualService
+# metadata:
+#   name: consumeme
+# spec:
+#   hosts:
+#   - consumeme.smanyamr.com
+#   gateways:
+#   - demo-https-gateway
+#   http:
+#   - route:
+#     - destination:
+#         host: consumeme
+#         subset: v1
+#         port:
+#           number: 80

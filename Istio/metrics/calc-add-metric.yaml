@@ -1,0 +1,46 @@
+# Configuration for metric instances
+apiVersion: "config.istio.io/v1alpha2"
+kind: metric
+metadata:
+  name: calc-svc-add-count
+  namespace: istio-system
+spec:
+  value: "1" # count each request twice
+  dimensions:
+    reporter: conditional((context.reporter.kind | "inbound") == "outbound", "client", "server")
+    source: source.workload.name | "unknown"
+    destination: destination.workload.name | "unknown"
+    request: request | "unknown"
+    message: '"Add called!"'
+  monitored_resource_type: '"UNSPECIFIED"'
+---
+# Configuration for a Prometheus handler
+apiVersion: "config.istio.io/v1alpha2"
+kind: prometheus
+metadata:
+  name: calc-prom-handler
+  namespace: istio-system
+spec:
+  metrics:
+  - name: calc_add_count_1 # Prometheus metric name
+    instance_name: calc-svc-add-count.metric.istio-system # Mixer instance name (fully-qualified)
+    kind: COUNTER
+    label_names:
+    - reporter
+    - source
+    - destination
+    - request
+    - message
+---
+# Rule to send metric instances to a Prometheus handler
+apiVersion: "config.istio.io/v1alpha2"
+kind: rule
+metadata:
+  name: calc-add-prom
+  namespace: istio-system
+spec:
+  actions:
+  - handler: calc-prom-handler.prometheus
+    instances:
+    - calc-svc-add-count.metric
+---
